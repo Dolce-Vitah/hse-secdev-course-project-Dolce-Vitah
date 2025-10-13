@@ -13,7 +13,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      DATABASE_URL: "sqlite:///./wishlist.db"
+      DATABASE_URL: "sqlite://"
       TEST_DATABASE_URL: "sqlite://"
       SECRET_KEY: "wishlist-secret-key"
       ALGORITHM: "HS256"
