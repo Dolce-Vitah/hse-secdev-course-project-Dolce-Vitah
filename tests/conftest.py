@@ -24,6 +24,7 @@ engine = create_engine(
 def create_test_db():
     database.engine = engine
 
+    database.init_db()
     SQLModel.metadata.create_all(engine)
     yield
     SQLModel.metadata.drop_all(engine)
