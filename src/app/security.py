@@ -1,7 +1,7 @@
 import os
 from datetime import datetime, timedelta
 
-from fastapi import Depends, HTTPException
+from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -9,6 +9,7 @@ from sqlmodel import Session
 
 from src.adapters.database import get_session
 from src.domain.models import User
+from src.shared.errors import AuthenticationError, NotFoundError
 
 from .utils.token_utils import is_token_revoked
 
@@ -47,15 +48,15 @@ def get_current_user(
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id: str = payload.get("sub")
         if user_id is None:
-            raise HTTPException(status_code=401, detail="Invalid token")
+            raise AuthenticationError("Invalid token: no subject field")
     except JWTError:
-        raise HTTPException(status_code=401, detail="Invalid token")
+        raise AuthenticationError("Invalid or malformed token")
 
     if is_token_revoked(session, token):
-        raise HTTPException(status_code=401, detail="Token revoked")
+        raise AuthenticationError("Token has been revoked")
 
     user = session.get(User, int(user_id))
     if not user:
-        raise HTTPException(status_code=401, detail="User not found")
+        raise NotFoundError("User not found")
 
     return user
