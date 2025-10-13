@@ -11,7 +11,7 @@ from src.app.main import app
 from src.app.security import create_access_token, get_current_user
 from src.domain.models import User
 
-TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL", "sqlite://")
+TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL", "sqlite:///./test.db")
 
 engine = create_engine(
     TEST_DATABASE_URL,
@@ -24,7 +24,6 @@ engine = create_engine(
 def create_test_db():
     database.engine = engine
 
-    database.init_db()
     SQLModel.metadata.create_all(engine)
     yield
     SQLModel.metadata.drop_all(engine)
