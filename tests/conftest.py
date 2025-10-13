@@ -1,3 +1,4 @@
+import os
 import uuid
 
 import pytest
@@ -10,7 +11,7 @@ from src.app.main import app
 from src.app.security import create_access_token, get_current_user
 from src.domain.models import User
 
-TEST_DATABASE_URL = "sqlite://"
+TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL", "sqlite://")
 
 engine = create_engine(
     TEST_DATABASE_URL,
