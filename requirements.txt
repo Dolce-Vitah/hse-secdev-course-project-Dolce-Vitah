@@ -76,6 +76,8 @@ pytest-mock>=3.10.0,<4.0
 
 python-jose==3.5.0
 
+python-multipart>=0.0.9
+
 pytokens==0.1.10
 
 PyYAML==6.0.3
