@@ -1,8 +1,8 @@
 import logging
 from collections import defaultdict
-from datetime import timedelta
+from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from sqlmodel import Session, select
 
 from src.adapters.database import get_session
@@ -11,6 +11,7 @@ from src.app.security import (
     create_access_token,
     get_current_user,
     get_password_hash,
+    logout_user,
     verify_password,
 )
 from src.domain.models import User, UserRole
@@ -21,8 +22,6 @@ from src.shared.errors import (
     InternalServerError,
     UserAlreadyExistsError,
 )
-
-from ..utils.token_utils import RevokedToken
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -35,21 +34,15 @@ BLOCK_MINUTES = 15
 
 
 def check_rate_limit(ip: str):
-    from datetime import datetime, timedelta
-
     now = datetime.utcnow()
     FAILED_LOGINS[ip] = [
         t for t in FAILED_LOGINS[ip] if now - t < timedelta(minutes=BLOCK_MINUTES)
     ]
     if len(FAILED_LOGINS[ip]) >= MAX_FAILED:
-        raise HTTPException(
-            status_code=429, detail="Too many login attempts, try later"
-        )
+        raise AuthorizationError("Too many login attempts, try later")
 
 
 def record_failed_attempt(ip: str):
-    from datetime import datetime
-
     FAILED_LOGINS[ip].append(datetime.utcnow())
 
 
@@ -91,7 +84,7 @@ def login(
     user = session.exec(select(User).where(User.username == user_in.username)).first()
     if not user or not verify_password(user_in.password, user.password_hash):
         record_failed_attempt(ip)
-        raise AuthorizationError("Invalid credentials")
+        raise AuthenticationError("Invalid credentials")
 
     access_token = create_access_token(
         {"sub": str(user.id), "role": user.role.value},
@@ -102,7 +95,7 @@ def login(
     return Token(access_token=access_token, token_type="bearer")
 
 
-@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+@router.post("/logout", status_code=204)
 def logout(
     credentials=Depends(bearer_scheme),
     current_user: User = Depends(get_current_user),
@@ -110,9 +103,7 @@ def logout(
 ):
     token = credentials.credentials
     try:
-        revoked = RevokedToken(token=token)
-        session.add(revoked)
-        session.commit()
+        logout_user(token, session)
     except Exception:
         raise InternalServerError("Failed to revoke token")
 
