@@ -1,4 +1,8 @@
-from fastapi import HTTPException, status
+from typing import Any, Dict
+from uuid import uuid4
+
+from fastapi import HTTPException, Request, status
+from fastapi.responses import JSONResponse
 
 
 class AppError(HTTPException):
@@ -46,3 +50,43 @@ class InternalServerError(AppError):
         super().__init__(
             "INTERNAL_ERROR", message, status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+
+def problem(
+    status: int,
+    title: str,
+    detail: str,
+    type_: str = "about:blank",
+    request: Request | None = None,
+    extras: Dict[str, Any] | None = None,
+) -> JSONResponse:
+    if isinstance(detail, Exception):
+        detail = str(detail)
+
+    cid = (
+        getattr(request.state, "correlation_id", str(uuid4()))
+        if request
+        else str(uuid4())
+    )
+
+    payload = {
+        "type": type_,
+        "title": title,
+        "status": status,
+        "detail": detail,
+        "correlation_id": cid,
+    }
+
+    if extras:
+        safe_extras = {k: str(v) for k, v in extras.items()}
+        payload.update(safe_extras)
+
+    response = JSONResponse(
+        content=payload,
+        status_code=status,
+        media_type="application/problem+json",
+    )
+
+    response.headers["X-Correlation-ID"] = cid
+
+    return response

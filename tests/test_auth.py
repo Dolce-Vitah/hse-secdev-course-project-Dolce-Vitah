@@ -11,9 +11,12 @@ def client():
     yield test_client
 
 
+# -------------------- Успешные сценарии -------------------- #
+
+
 def test_register_success(client):
     r = client.post(
-        "/api/v1/auth/register", json={"username": "alice", "password": "12345678"}
+        "/api/v1/auth/register", json={"username": "alice", "password": "Password123_"}
     )
     assert r.status_code == 200, r.text
     data = r.json()
@@ -23,10 +26,10 @@ def test_register_success(client):
 
 def test_login_success(client):
     client.post(
-        "/api/v1/auth/register", json={"username": "bob", "password": "password123"}
+        "/api/v1/auth/register", json={"username": "bob", "password": "Password123_"}
     )
     r = client.post(
-        "/api/v1/auth/login", json={"username": "bob", "password": "password123"}
+        "/api/v1/auth/login", json={"username": "bob", "password": "Password123_"}
     )
     assert r.status_code == 200, r.text
     assert "access_token" in r.json()
@@ -34,7 +37,7 @@ def test_login_success(client):
 
 def test_logout_success(client):
     reg = client.post(
-        "/api/v1/auth/register", json={"username": "carol", "password": "password123"}
+        "/api/v1/auth/register", json={"username": "carol", "password": "Password123_"}
     )
     token = reg.json()["access_token"]
     headers = {"Authorization": f"Bearer {token}"}
@@ -49,7 +52,6 @@ def test_admin_promote_user_success(client, session):
     session.add(user)
     session.commit()
 
-    r = client.post("/api/v1/auth/login", json={"username": "dave", "password": "hash"})
     from src.app.security import create_access_token
 
     token = create_access_token({"sub": str(admin.id), "role": "admin"})
@@ -57,21 +59,21 @@ def test_admin_promote_user_success(client, session):
 
     r = client.post("/api/v1/auth/promote/dave", headers=headers)
     assert r.status_code == 200
-
     assert "access_token" in r.json()
     refreshed = session.get(User, user.id)
     assert refreshed.role == UserRole.admin
 
 
-# ---------- Негативные сценарии ----------
+# -------------------- Негативные сценарии -------------------- #
 
 
 @pytest.mark.parametrize(
     "username,password",
     [
-        ("ab", "password123"),
-        ("a" * 101, "password123"),
-        ("validname", "short"),
+        ("ab", "Password123_"),  # username слишком короткий
+        ("a" * 101, "Password123_"),  # username слишком длинный
+        ("validname", "short"),  # пароль слишком короткий и без заглавной
+        ("validname", "password123"),  # пароль без заглавной
     ],
 )
 def test_register_invalid_length(client, username, password):
@@ -79,18 +81,18 @@ def test_register_invalid_length(client, username, password):
         "/api/v1/auth/register", json={"username": username, "password": password}
     )
     assert r.status_code in (400, 422), r.text
-    assert "length" in r.text or "too short" in r.text.lower()
+    assert "length" in r.text.lower() or "password" in r.text.lower()
 
 
 def test_register_duplicate_user(client):
     client.post(
-        "/api/v1/auth/register", json={"username": "dupe", "password": "password123"}
+        "/api/v1/auth/register", json={"username": "dupe", "password": "Password123_"}
     )
     r = client.post(
-        "/api/v1/auth/register", json={"username": "dupe", "password": "newpassword456"}
+        "/api/v1/auth/register", json={"username": "dupe", "password": "Password123_"}
     )
     assert r.status_code == 400
-    assert "already exists" in r.text
+    assert "already exists" in r.text.lower()
 
 
 def test_register_invalid_payload(client):
@@ -100,17 +102,17 @@ def test_register_invalid_payload(client):
 
 def test_login_invalid_credentials(client):
     client.post(
-        "/api/v1/auth/register", json={"username": "eva", "password": "password123"}
+        "/api/v1/auth/register", json={"username": "eva", "password": "Password123_"}
     )
     r = client.post(
-        "/api/v1/auth/login", json={"username": "eva", "password": "wrongpass"}
+        "/api/v1/auth/login", json={"username": "eva", "password": "WrongPass123_"}
     )
     assert r.status_code in (401, 403)
 
 
 def test_login_user_not_found(client):
     r = client.post(
-        "/api/v1/auth/login", json={"username": "ghost", "password": "password123"}
+        "/api/v1/auth/login", json={"username": "ghost", "password": "Password123_"}
     )
     assert r.status_code in (401, 403)
 
@@ -135,7 +137,7 @@ def test_promote_by_non_admin(client, session):
 
     r = client.post("/api/v1/auth/promote/charlie", headers=headers)
     assert r.status_code == 403
-    assert "Only admins" in r.text
+    assert "only admins" in r.text.lower()
 
 
 def test_promote_nonexistent_user(client, session):
@@ -149,5 +151,5 @@ def test_promote_nonexistent_user(client, session):
     headers = {"Authorization": f"Bearer {token}"}
 
     r = client.post("/api/v1/auth/promote/unknown_user", headers=headers)
-    assert r.status_code == 401 or r.status_code == 404
-    assert "not found" in r.text
+    assert r.status_code in (401, 404)
+    assert "not found" in r.text.lower()

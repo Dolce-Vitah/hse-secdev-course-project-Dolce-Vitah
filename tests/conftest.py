@@ -8,8 +8,8 @@ from sqlmodel import Session, SQLModel, create_engine
 
 from src.adapters import database
 from src.app.main import app
-from src.app.security import create_access_token, get_current_user
-from src.domain.models import User
+from src.app.security import create_access_token, get_current_user, get_password_hash
+from src.domain.models import User, UserRole
 
 TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL", "sqlite:///./test.db")
 
@@ -55,11 +55,15 @@ def client(session):
 @pytest.fixture
 def create_user(session):
     def _create_user(username: str, password: str = "password123", role: str = "user"):
-        user = User(username=username, password_hash=password, role=role)
+        user = User(
+            username=username,
+            password_hash=get_password_hash(password),
+            role=UserRole(role) if isinstance(role, str) else role,
+        )
         session.add(user)
         session.commit()
         session.refresh(user)
-        token = create_access_token({"sub": str(user.id)})
+        token = create_access_token({"sub": str(user.id), "role": user.role.value})
         return {"user": user, "token": token}
 
     return _create_user
@@ -82,3 +86,9 @@ def client_with_user(client, test_user):
     app.dependency_overrides[get_current_user] = lambda: test_user["user"]
     yield client
     app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def auth_headers(test_user):
+    token = test_user["token"]
+    return {"Authorization": f"Bearer {token}"}
