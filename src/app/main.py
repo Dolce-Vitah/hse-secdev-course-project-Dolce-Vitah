@@ -1,12 +1,15 @@
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
 
 from src.adapters.database import init_db
 from src.app.api import auth, wishes
-from src.shared.errors import AppError, InternalServerError, ValidationError
+from src.app.middleware import CorrelationIdMiddleware, RequestSizeLimitMiddleware
+from src.shared.errors import AppError, problem
 
 app = FastAPI(title="Wishlist API")
+
+app.add_middleware(CorrelationIdMiddleware)
+app.add_middleware(RequestSizeLimitMiddleware)
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(wishes.router, prefix="/api/v1")
@@ -19,30 +22,30 @@ def on_startup():
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    details = {"errors": exc.errors()}
-    error = ValidationError(message="Invalid request data", details=details)
-    return JSONResponse(
-        status_code=error.status_code,
-        content={
-            "code": error.code,
-            "message": error.message,
-            "details": error.details,
-        },
+    return problem(
+        status=400,
+        title="Validation Error",
+        detail="Invalid request data",
+        request=request,
+        extras={"errors": exc.errors()},
     )
 
 
 @app.exception_handler(AppError)
 async def app_error_handler(request: Request, exc: AppError):
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={"code": exc.code, "message": exc.message, "details": exc.details},
+    return problem(
+        status=exc.status_code,
+        title=exc.code,
+        detail=exc.message,
+        request=request,
     )
 
 
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
-    error = InternalServerError()
-    return JSONResponse(
-        status_code=error.status_code,
-        content={"code": error.code, "message": error.message, "details": {}},
+    return problem(
+        status=500,
+        title="Internal Server Error",
+        detail="An unexpected error occurred.",
+        request=request,
     )

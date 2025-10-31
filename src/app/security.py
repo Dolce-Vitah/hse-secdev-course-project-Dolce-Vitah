@@ -11,14 +11,26 @@ from src.adapters.database import get_session
 from src.domain.models import User
 from src.shared.errors import AuthenticationError, NotFoundError
 
-from .utils.token_utils import is_token_revoked
+from .utils.token_utils import is_token_revoked, revoke_token
 
-SECRET_KEY = os.getenv("SECRET_KEY", "wishlist-secret-key")
+USE_ENV_SECRETS = os.getenv("USE_ENV_SECRETS", "true").lower() == "true"
+if not USE_ENV_SECRETS:
+    raise RuntimeError("Environment-based secrets are required (USE_ENV_SECRETS=true)")
+
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 60))
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 15))
+JWT_ROTATE_KEY = os.getenv("JWT_ROTATE_KEY", "false").lower() == "true"
 
+JWT_SECRET_CURRENT = os.getenv("JWT_SECRET_CURRENT", "wishlist-current")
+JWT_SECRET_PREVIOUS = os.getenv("JWT_SECRET_PREVIOUS", "wishlist-previous")
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(
+    schemes=["argon2"],
+    deprecated="auto",
+    argon2__memory_cost=65536,
+    argon2__time_cost=3,
+    argon2__parallelism=2,
+)
 bearer_scheme = HTTPBearer()
 
 
@@ -36,7 +48,8 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
         expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
     to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    token = jwt.encode(to_encode, JWT_SECRET_CURRENT, algorithm=ALGORITHM)
+    return token
 
 
 def get_current_user(
@@ -45,12 +58,19 @@ def get_current_user(
 ):
     token = credentials.credentials
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id: str = payload.get("sub")
-        if user_id is None:
-            raise AuthenticationError("Invalid token: no subject field")
+        payload = jwt.decode(token, JWT_SECRET_CURRENT, algorithms=[ALGORITHM])
     except JWTError:
-        raise AuthenticationError("Invalid or malformed token")
+        if JWT_ROTATE_KEY:
+            try:
+                payload = jwt.decode(token, JWT_SECRET_PREVIOUS, algorithms=[ALGORITHM])
+            except JWTError:
+                raise AuthenticationError("Invalid or malformed token")
+        else:
+            raise AuthenticationError("Invalid or malformed token")
+
+    user_id: str = payload.get("sub")
+    if user_id is None:
+        raise AuthenticationError("Invalid token: no subject field")
 
     if is_token_revoked(session, token):
         raise AuthenticationError("Token has been revoked")
@@ -60,3 +80,14 @@ def get_current_user(
         raise NotFoundError("User not found")
 
     return user
+
+
+def logout_user(token: str, session: Session):
+    try:
+        payload = jwt.decode(token, JWT_SECRET_CURRENT, algorithms=[ALGORITHM])
+        exp = datetime.utcfromtimestamp(
+            payload.get("exp", datetime.utcnow().timestamp())
+        )
+        revoke_token(session, token, exp)
+    except JWTError:
+        pass
