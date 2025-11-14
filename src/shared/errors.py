@@ -6,8 +6,12 @@ from fastapi.responses import JSONResponse
 
 
 class AppError(HTTPException):
-    def __init__(
-        self, code: str, message: str, http_status: int, details: dict | None = None
+    def __init__(  # noqa: B042
+        self,
+        code: str = "",
+        message: str = "",
+        http_status: int = 500,
+        details: dict | None = None,
     ):
         self.code = code
         self.message = message
@@ -19,34 +23,34 @@ class AppError(HTTPException):
 
 
 class ValidationError(AppError):
-    def __init__(self, message: str, details: dict | None = None):
+    def __init__(self, message: str, details: dict | None = None):  # noqa: B042
         super().__init__(
             "VALIDATION_ERROR", message, status.HTTP_400_BAD_REQUEST, details
         )
 
 
 class AuthenticationError(AppError):
-    def __init__(self, message: str = "Authentication failed"):
+    def __init__(self, message: str = "Authentication failed"):  # noqa: B042
         super().__init__("UNAUTHORIZED", message, status.HTTP_401_UNAUTHORIZED)
 
 
 class AuthorizationError(AppError):
-    def __init__(self, message: str = "You are not allowed to perform this action"):
+    def __init__(self, message: str = "Access denied"):  # noqa: B042
         super().__init__("FORBIDDEN", message, status.HTTP_403_FORBIDDEN)
 
 
 class NotFoundError(AppError):
-    def __init__(self, message: str = "Resource not found"):
+    def __init__(self, message: str = "Resource not found"):  # noqa: B042
         super().__init__("NOT_FOUND", message, status.HTTP_404_NOT_FOUND)
 
 
 class UserAlreadyExistsError(AppError):
-    def __init__(self, message: str = "User with this username already exists"):
+    def __init__(self, message: str = "Registration failed"):  # noqa: B042
         super().__init__("USER_ALREADY_EXISTS", message, status.HTTP_400_BAD_REQUEST)
 
 
 class InternalServerError(AppError):
-    def __init__(self, message: str = "Internal server error"):
+    def __init__(self, message: str = "Internal server error"):  # noqa: B042
         super().__init__(
             "INTERNAL_ERROR", message, status.HTTP_500_INTERNAL_SERVER_ERROR
         )
@@ -61,7 +65,7 @@ def problem(
     extras: Dict[str, Any] | None = None,
 ) -> JSONResponse:
     if isinstance(detail, Exception):
-        detail = str(detail)
+        detail = "Unexpected error"
 
     cid = (
         getattr(request.state, "correlation_id", str(uuid4()))

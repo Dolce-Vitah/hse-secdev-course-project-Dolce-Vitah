@@ -15,7 +15,9 @@ from .utils.token_utils import is_token_revoked, revoke_token
 
 USE_ENV_SECRETS = os.getenv("USE_ENV_SECRETS", "true").lower() == "true"
 if not USE_ENV_SECRETS:
-    raise RuntimeError("Environment-based secrets are required (USE_ENV_SECRETS=true)")
+    raise RuntimeError(
+        "Environment-based secrets " "are required (USE_ENV_SECRETS=true)"
+    )
 
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 15))
@@ -53,8 +55,8 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
 
 
 def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
-    session: Session = Depends(get_session),
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),  # noqa: B008
+    session: Session = Depends(get_session),  # noqa: B008
 ) -> User:
     token = credentials.credentials
     try:
