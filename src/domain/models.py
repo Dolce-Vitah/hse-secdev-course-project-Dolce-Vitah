@@ -1,3 +1,4 @@
+from decimal import Decimal
 from enum import Enum
 from typing import Optional
 
@@ -20,6 +21,6 @@ class Wish(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     title: str
     link: Optional[str] = None
-    price_estimate: Optional[float] = None
+    price_estimate: Optional[Decimal] = None
     notes: Optional[str] = None
     owner_id: int = Field(foreign_key="user.id")
