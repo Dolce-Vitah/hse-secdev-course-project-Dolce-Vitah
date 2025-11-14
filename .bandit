@@ -1,0 +1,9 @@
+skips: []
+exclude_dirs:
+  - .venv
+  - venv
+  - build
+  - dist
+profiles:
+  default:
+    - name: "basic"
