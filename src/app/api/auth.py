@@ -1,8 +1,10 @@
 import logging
 from collections import defaultdict
 from datetime import datetime, timedelta
+from typing import DefaultDict, List
 
 from fastapi import APIRouter, Depends
+from fastapi.security import HTTPAuthorizationCredentials
 from sqlmodel import Session, select
 
 from src.adapters.database import get_session
@@ -28,12 +30,12 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 logger = logging.getLogger("audit")
 logger.setLevel(logging.INFO)
 
-FAILED_LOGINS = defaultdict(list)
+FAILED_LOGINS: DefaultDict[str, List[datetime]] = defaultdict(list)
 MAX_FAILED = 5
 BLOCK_MINUTES = 15
 
 
-def check_rate_limit(ip: str):
+def check_rate_limit(ip: str) -> None:
     now = datetime.utcnow()
     FAILED_LOGINS[ip] = [
         t for t in FAILED_LOGINS[ip] if now - t < timedelta(minutes=BLOCK_MINUTES)
@@ -42,12 +44,12 @@ def check_rate_limit(ip: str):
         raise AuthorizationError("Too many login attempts, try later")
 
 
-def record_failed_attempt(ip: str):
+def record_failed_attempt(ip: str) -> None:
     FAILED_LOGINS[ip].append(datetime.utcnow())
 
 
 @router.post("/register", response_model=Token)
-def register(user_in: UserCreate, session: Session = Depends(get_session)):
+def register(user_in: UserCreate, session: Session = Depends(get_session)) -> Token:
     existing = session.exec(
         select(User).where(User.username == user_in.username)
     ).first()
@@ -78,7 +80,7 @@ def register(user_in: UserCreate, session: Session = Depends(get_session)):
 @router.post("/login", response_model=Token)
 def login(
     user_in: UserCreate, session: Session = Depends(get_session), ip: str = "127.0.0.1"
-):
+) -> Token:
     check_rate_limit(ip)
 
     user = session.exec(select(User).where(User.username == user_in.username)).first()
@@ -97,10 +99,10 @@ def login(
 
 @router.post("/logout", status_code=204)
 def logout(
-    credentials=Depends(bearer_scheme),
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
     current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
-):
+) -> None:
     token = credentials.credentials
     try:
         logout_user(token, session)
@@ -115,7 +117,7 @@ def promote_user(
     username: str,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
-):
+) -> Token:
     if current_user.role != UserRole.admin:
         raise AuthorizationError("Only admins can promote users")
 
