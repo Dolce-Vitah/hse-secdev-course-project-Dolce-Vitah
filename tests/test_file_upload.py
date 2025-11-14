@@ -49,7 +49,7 @@ def test_upload_invalid_magic_bytes(client_with_user):
     assert response.status_code == 415
 
     data = response.json()
-    assert "File content type" in data["detail"]
+    assert "File content does not match" in data["detail"]
 
 
 def test_upload_file_traversal_attempt(client_with_user):

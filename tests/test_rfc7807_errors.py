@@ -30,7 +30,7 @@ def test_register_duplicate_user_returns_problem_details(client):
         "/api/v1/auth/register", json={"username": "alice", "password": "Password123_"}
     )
     problem = assert_problem_response(resp, 400, "user_already_exists")
-    assert "Username" in problem["detail"]
+    assert "Registration failed" in problem["detail"]
 
 
 def test_login_invalid_credentials_problem_details(client):

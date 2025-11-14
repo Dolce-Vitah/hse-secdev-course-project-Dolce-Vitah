@@ -92,7 +92,7 @@ def test_register_duplicate_user(client):
         "/api/v1/auth/register", json={"username": "dupe", "password": "Password123_"}
     )
     assert r.status_code == 400
-    assert "already exists" in r.text.lower()
+    assert "registration failed" in r.text.lower()
 
 
 def test_register_invalid_payload(client):
@@ -137,7 +137,7 @@ def test_promote_by_non_admin(client, session):
 
     r = client.post("/api/v1/auth/promote/charlie", headers=headers)
     assert r.status_code == 403
-    assert "only admins" in r.text.lower()
+    assert "access denied" in r.text.lower()
 
 
 def test_promote_nonexistent_user(client, session):

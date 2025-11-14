@@ -111,8 +111,8 @@ def test_get_wish_forbidden(client_with_user, client, another_user):
 
     forbidden_response = client.get(f"{API_PREFIX}{wish_id}")
 
-    assert forbidden_response.status_code == 403, (
-        f"Expected 403, got {forbidden_response.status_code}. "
+    assert forbidden_response.status_code == 404, (
+        f"Expected 404, got {forbidden_response.status_code}. "
         f"Response: {forbidden_response.text}"
     )
 
@@ -149,7 +149,7 @@ def test_update_wish_forbidden(client_with_user, another_user, client):
     update_response = client.patch(f"{API_PREFIX}{wish_id}", json=update_data)
 
     assert (
-        update_response.status_code == 403
+        update_response.status_code == 404
     ), f"Update response: {update_response.json()}"
 
     app.dependency_overrides.clear()
@@ -187,7 +187,7 @@ def test_delete_wish_forbidden(client_with_user, another_user, client):
 
     response = client.delete(f"{API_PREFIX}{wish_id}")
 
-    assert response.status_code == 403, f"Response JSON: {response.json()}"
+    assert response.status_code == 404, f"Response JSON: {response.json()}"
 
     app.dependency_overrides.clear()
 
