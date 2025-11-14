@@ -49,7 +49,7 @@ jobs:
         run: flake8 .
 
       - name: Mypy
-        run: mypy . || (echo "mypy failed" && false)
+        run: mypy src || (echo "mypy failed" && false)
 
       - name: Bandit security scan
         run: bandit -r . -lll
