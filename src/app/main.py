@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 
 from src.adapters.database import init_db
 from src.app.api import auth, wishes
@@ -16,12 +17,14 @@ app.include_router(wishes.router, prefix="/api/v1")
 
 
 @app.on_event("startup")
-def on_startup():
+def on_startup() -> None:
     init_db()
 
 
 @app.exception_handler(RequestValidationError)
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
+async def validation_exception_handler(
+    request: Request, exc: RequestValidationError
+) -> JSONResponse:
     return problem(
         status=400,
         title="Validation Error",
@@ -32,7 +35,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 
 @app.exception_handler(AppError)
-async def app_error_handler(request: Request, exc: AppError):
+async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
     return problem(
         status=exc.status_code,
         title=exc.code,
@@ -42,7 +45,7 @@ async def app_error_handler(request: Request, exc: AppError):
 
 
 @app.exception_handler(Exception)
-async def unhandled_exception_handler(request: Request, exc: Exception):
+async def unhandled_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     return problem(
         status=500,
         title="Internal Server Error",
