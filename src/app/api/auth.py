@@ -22,6 +22,7 @@ from src.shared.errors import (
     AuthenticationError,
     AuthorizationError,
     InternalServerError,
+    NotFoundError,
     UserAlreadyExistsError,
 )
 
@@ -49,12 +50,14 @@ def record_failed_attempt(ip: str) -> None:
 
 
 @router.post("/register", response_model=Token)
-def register(user_in: UserCreate, session: Session = Depends(get_session)) -> Token:
+def register(
+    user_in: UserCreate, session: Session = Depends(get_session)  # noqa B008
+) -> Token:
     existing = session.exec(
         select(User).where(User.username == user_in.username)
     ).first()
     if existing:
-        raise UserAlreadyExistsError(f"Username '{user_in.username}' already exists")
+        raise UserAlreadyExistsError()
 
     try:
         user = User(
@@ -66,7 +69,7 @@ def register(user_in: UserCreate, session: Session = Depends(get_session)) -> To
         session.commit()
         session.refresh(user)
     except Exception:
-        raise InternalServerError("Failed to create user")
+        raise InternalServerError()
 
     access_token = create_access_token(
         {"sub": str(user.id), "role": user.role.value},
@@ -79,8 +82,12 @@ def register(user_in: UserCreate, session: Session = Depends(get_session)) -> To
 
 @router.post("/login", response_model=Token)
 def login(
-    user_in: UserCreate, session: Session = Depends(get_session), ip: str = "127.0.0.1"
+    user_in: UserCreate,
+    session: Session = Depends(get_session),  # noqa: B008
+    ip: str | None = None,
 ) -> Token:
+    if ip is None:
+        ip = "127.0.0.1"
     check_rate_limit(ip)
 
     user = session.exec(select(User).where(User.username == user_in.username)).first()
@@ -99,15 +106,15 @@ def login(
 
 @router.post("/logout", status_code=204)
 def logout(
-    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
-    current_user: User = Depends(get_current_user),
-    session: Session = Depends(get_session),
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),  # noqa: B008
+    current_user: User = Depends(get_current_user),  # noqa: B008
+    session: Session = Depends(get_session),  # noqa: B008
 ) -> None:
     token = credentials.credentials
     try:
         logout_user(token, session)
     except Exception:
-        raise InternalServerError("Failed to revoke token")
+        raise InternalServerError()
 
     logger.info(f"User {current_user.id} logged out")
 
@@ -115,15 +122,15 @@ def logout(
 @router.post("/promote/{username}", response_model=Token)
 def promote_user(
     username: str,
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
+    session: Session = Depends(get_session),  # noqa: B008
+    current_user: User = Depends(get_current_user),  # noqa: B008
 ) -> Token:
     if current_user.role != UserRole.admin:
-        raise AuthorizationError("Only admins can promote users")
+        raise AuthorizationError()
 
     user = session.exec(select(User).where(User.username == username)).first()
     if not user:
-        raise AuthenticationError(f"User '{username}' not found")
+        raise NotFoundError()
 
     user.role = UserRole.admin
     session.add(user)
