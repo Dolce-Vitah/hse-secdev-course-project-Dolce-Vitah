@@ -15,7 +15,9 @@ from .utils.token_utils import is_token_revoked, revoke_token
 
 USE_ENV_SECRETS = os.getenv("USE_ENV_SECRETS", "true").lower() == "true"
 if not USE_ENV_SECRETS:
-    raise RuntimeError("Environment-based secrets are required (USE_ENV_SECRETS=true)")
+    raise RuntimeError(
+        "Environment-based secrets " "are required (USE_ENV_SECRETS=true)"
+    )
 
 ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 15))
@@ -34,28 +36,28 @@ pwd_context = CryptContext(
 bearer_scheme = HTTPBearer()
 
 
-def get_password_hash(password: str):
-    return pwd_context.hash(password)
+def get_password_hash(password: str) -> str:
+    return str(pwd_context.hash(password))
 
 
-def verify_password(plain_password, hashed_password):
-    return pwd_context.verify(plain_password, hashed_password)
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return bool(pwd_context.verify(plain_password, hashed_password))
 
 
-def create_access_token(data: dict, expires_delta: timedelta | None = None):
+def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
     to_encode = data.copy()
     expire = datetime.utcnow() + (
         expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
     to_encode.update({"exp": expire})
     token = jwt.encode(to_encode, JWT_SECRET_CURRENT, algorithm=ALGORITHM)
-    return token
+    return str(token)
 
 
 def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),
-    session: Session = Depends(get_session),
-):
+    credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme),  # noqa: B008
+    session: Session = Depends(get_session),  # noqa: B008
+) -> User:
     token = credentials.credentials
     try:
         payload = jwt.decode(token, JWT_SECRET_CURRENT, algorithms=[ALGORITHM])
@@ -82,7 +84,7 @@ def get_current_user(
     return user
 
 
-def logout_user(token: str, session: Session):
+def logout_user(token: str, session: Session) -> None:
     try:
         payload = jwt.decode(token, JWT_SECRET_CURRENT, algorithms=[ALGORITHM])
         exp = datetime.utcfromtimestamp(

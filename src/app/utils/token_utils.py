@@ -1,7 +1,9 @@
 import os
 from datetime import datetime, timedelta
+from typing import cast
 
 from sqlmodel import Field, Session, SQLModel, select
+from sqlmodel.sql.expression import ColumnElement
 
 
 class RevokedToken(SQLModel, table=True):
@@ -11,7 +13,7 @@ class RevokedToken(SQLModel, table=True):
     expires_at: datetime | None = None
 
 
-def revoke_token(session: Session, token: str, exp: datetime | None = None):
+def revoke_token(session: Session, token: str, exp: datetime | None = None) -> None:
     revoked = RevokedToken(token=token, expires_at=exp)
     session.add(revoked)
     session.commit()
@@ -24,12 +26,10 @@ def is_token_revoked(session: Session, token: str) -> bool:
     )
 
 
-def cleanup_expired_tokens(session: Session):
+def cleanup_expired_tokens(session: Session) -> None:
     now = datetime.utcnow()
     expired_tokens = session.exec(
-        select(RevokedToken).where(
-            RevokedToken.expires_at is not None, RevokedToken.expires_at < now
-        )
+        select(RevokedToken).where(cast(ColumnElement, RevokedToken.expires_at) < now)
     ).all()
     for token in expired_tokens:
         session.delete(token)
@@ -37,7 +37,7 @@ def cleanup_expired_tokens(session: Session):
         session.commit()
 
 
-def rotate_secret_if_needed():
+def rotate_secret_if_needed() -> None:
     if os.getenv("JWT_ROTATE_KEY", "false").lower() == "true":
         new_key = f"{os.urandom(32).hex()}-{datetime.utcnow().timestamp()}"
         os.environ["SECRET_KEY"] = new_key

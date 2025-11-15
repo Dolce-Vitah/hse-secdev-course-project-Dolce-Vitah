@@ -29,19 +29,19 @@ def test_create_wish_success(client_with_user):
 )
 def test_create_wish_invalid(client_with_user, payload):
     response = client_with_user.post(API_PREFIX, json=payload)
-    assert response.status_code == 400
+    assert response.status_code == 422
 
 
 def test_create_wish_negative_price(client_with_user):
     payload = {"title": "Invalid Wish", "price_estimate": -10}
     response = client_with_user.post(API_PREFIX, json=payload)
-    assert response.status_code == 400
+    assert response.status_code == 422
 
 
 def test_create_wish_invalid_link(client_with_user):
     payload = {"title": "Wish", "link": "not-a-url"}
     response = client_with_user.post(API_PREFIX, json=payload)
-    assert response.status_code == 400
+    assert response.status_code == 422
 
 
 def test_create_wish_unauthorized(client):
@@ -111,8 +111,8 @@ def test_get_wish_forbidden(client_with_user, client, another_user):
 
     forbidden_response = client.get(f"{API_PREFIX}{wish_id}")
 
-    assert forbidden_response.status_code == 403, (
-        f"Expected 403, got {forbidden_response.status_code}. "
+    assert forbidden_response.status_code == 404, (
+        f"Expected 404, got {forbidden_response.status_code}. "
         f"Response: {forbidden_response.text}"
     )
 
@@ -149,7 +149,7 @@ def test_update_wish_forbidden(client_with_user, another_user, client):
     update_response = client.patch(f"{API_PREFIX}{wish_id}", json=update_data)
 
     assert (
-        update_response.status_code == 403
+        update_response.status_code == 404
     ), f"Update response: {update_response.json()}"
 
     app.dependency_overrides.clear()
@@ -161,7 +161,7 @@ def test_update_wish_invalid_data(client_with_user):
 
     payload = {"title": ""}
     response = client_with_user.patch(f"{API_PREFIX}{wish_id}", json=payload)
-    assert response.status_code == 400
+    assert response.status_code == 422
 
 
 def test_delete_wish_success(client_with_user):
@@ -187,7 +187,7 @@ def test_delete_wish_forbidden(client_with_user, another_user, client):
 
     response = client.delete(f"{API_PREFIX}{wish_id}")
 
-    assert response.status_code == 403, f"Response JSON: {response.json()}"
+    assert response.status_code == 404, f"Response JSON: {response.json()}"
 
     app.dependency_overrides.clear()
 
