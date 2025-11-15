@@ -26,9 +26,9 @@ async def validation_exception_handler(
     request: Request, exc: RequestValidationError
 ) -> JSONResponse:
     return problem(
-        status=400,
-        title="Validation Error",
-        detail="Invalid request data",
+        status=422,
+        title="Unprocessable Entity",
+        detail="The request body is invalid.",
         request=request,
         extras={"errors": exc.errors()},
     )
