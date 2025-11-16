@@ -1,3 +1,5 @@
+from typing import Dict
+
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -17,7 +19,7 @@ app.include_router(wishes.router, prefix="/api/v1")
 
 
 @app.get("/health")
-def health():
+def health() -> Dict[str, str]:
     return {"status": "ok"}
 
 
