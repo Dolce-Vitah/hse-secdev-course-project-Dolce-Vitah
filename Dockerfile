@@ -1,10 +1,10 @@
 FROM python:3.11-alpine3.20 AS builder
 
 RUN apk add --no-cache \
-    gcc=12.3.1_pre20230918-r0 \
-    musl-dev=1.2.4-r1 \
-    libffi-dev=3.4.4-r2 \
-    openssl-dev=3.1.3-r1
+    gcc=13.2.1_git20240309-r1 \
+    musl-dev=1.2.5-r1 \
+    libffi-dev=3.4.6-r0 \
+    openssl-dev=3.3.5-r0
 
 WORKDIR /app
 
