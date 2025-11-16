@@ -100,7 +100,7 @@ jobs:
       - name: Build Docker image
         run: docker build -t wishlist-api:ci .
 
-      - uses: aquasecurity/trivy-action@v0.33.0
+      - uses: aquasecurity/trivy-action@0.28.0
         with:
           image-ref: "wishlist-api:ci"
           format: "json"
