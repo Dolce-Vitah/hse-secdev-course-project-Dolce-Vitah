@@ -1,11 +1,15 @@
 FROM python:3.11-alpine3.20 AS builder
 
-RUN apk add --no-cache gcc musl-dev libffi-dev openssl-dev
+RUN apk add --no-cache \
+    gcc=12.3.1_pre20230918-r0 \
+    musl-dev=1.2.4-r1 \
+    libffi-dev=3.4.4-r2 \
+    openssl-dev=3.1.3-r1
 
 WORKDIR /app
 
 COPY requirements.txt requirements-dev.txt ./
-RUN pip install --no-cache-dir --upgrade pip \
+RUN pip install --no-cache-dir --upgrade pip==23.3.1 \
     && pip install --no-cache-dir -r requirements.txt -r requirements-dev.txt --prefix=/install
 
 COPY src ./src
@@ -16,7 +20,10 @@ RUN addgroup -S app && adduser -S app -G app
 
 WORKDIR /app
 
-RUN apk add --no-cache libpq wget sqlite
+RUN apk add --no-cache \
+    libpq=16.0-r0 \
+    wget=1.22.1-r1 \
+    sqlite=3.44.0-r1
 
 RUN mkdir -p /app/uploads /app/db \
     && chown -R app:app /app/uploads /app/db
