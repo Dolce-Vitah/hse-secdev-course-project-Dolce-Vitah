@@ -1,3 +1,5 @@
+from typing import Dict
+
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
@@ -14,6 +16,11 @@ app.add_middleware(RequestSizeLimitMiddleware)
 
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(wishes.router, prefix="/api/v1")
+
+
+@app.get("/health")
+def health() -> Dict[str, str]:
+    return {"status": "ok"}
 
 
 @app.on_event("startup")
