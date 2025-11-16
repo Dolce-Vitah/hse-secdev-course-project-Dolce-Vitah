@@ -16,6 +16,11 @@ app.include_router(auth.router, prefix="/api/v1")
 app.include_router(wishes.router, prefix="/api/v1")
 
 
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+
 @app.on_event("startup")
 def on_startup() -> None:
     init_db()
