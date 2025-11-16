@@ -18,7 +18,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      DATABASE_URL: "sqlite:///./wishlist.db"
+      DATABASE_URL: "sqlite:////app/db/database.sqlite"
       TEST_DATABASE_URL: "sqlite:///./test.db"
       SECRET_KEY: "wishlist-secret-key"
       ALGORITHM: "HS256"
@@ -100,7 +100,7 @@ jobs:
       - name: Build Docker image
         run: docker build -t wishlist-api:ci .
 
-      - uses: aquasecurity/trivy-action@v0.20.0
+      - uses: aquasecurity/trivy-action@v0.30.0
         with:
           image-ref: "wishlist-api:ci"
           format: "json"
