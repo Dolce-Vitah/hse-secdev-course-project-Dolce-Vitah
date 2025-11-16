@@ -21,9 +21,9 @@ RUN addgroup -S app && adduser -S app -G app
 WORKDIR /app
 
 RUN apk add --no-cache \
-    libpq=16.0-r0 \
-    wget=1.22.1-r1 \
-    sqlite=3.44.0-r1
+    libpq=16.10-r0 \
+    wget=1.24.5-r0 \
+    sqlite=3.45.3-r2
 
 RUN mkdir -p /app/uploads /app/db \
     && chown -R app:app /app/uploads /app/db
