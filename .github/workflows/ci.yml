@@ -124,6 +124,7 @@ jobs:
           docker build \
             --cache-from=type=local,src=/tmp/.buildx-cache \
             --cache-to=type=local,dest=/tmp/.buildx-cache \
+            --load \
             -t wishlist-api:ci .
 
       - uses: aquasecurity/trivy-action@0.28.0
