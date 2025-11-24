@@ -50,7 +50,7 @@ def test_get_current_user_valid_token(mocker):
 
     token = create_access_token({"sub": str(mock_user.id)})
 
-    mocker.patch("src.app.security.is_token_revoked", return_value=False)
+    mocker.patch("src.wishlist_api.app.security.is_token_revoked", return_value=False)
     credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
     user = get_current_user(credentials=credentials, session=mock_session)
     assert user.id == 1
@@ -63,7 +63,7 @@ def test_get_current_user_revoked_token(mocker):
     mock_session.get.return_value = mock_user
 
     token = create_access_token({"sub": str(mock_user.id)})
-    mocker.patch("src.app.security.is_token_revoked", return_value=True)
+    mocker.patch("src.wishlist_api.app.security.is_token_revoked", return_value=True)
     credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
 
     with pytest.raises(AuthenticationError) as exc_info:
@@ -75,7 +75,7 @@ def test_get_current_user_invalid_token(mocker):
     mock_session = Mock(spec=Session)
     mock_session.get.return_value = None
 
-    mocker.patch("src.app.security.is_token_revoked", return_value=False)
+    mocker.patch("src.wishlist_api.app.security.is_token_revoked", return_value=False)
     credentials = HTTPAuthorizationCredentials(
         scheme="Bearer", credentials="invalidtoken"
     )
@@ -89,7 +89,7 @@ def test_get_current_user_user_not_found(mocker):
     mock_session.get.return_value = None
 
     token = create_access_token({"sub": "999"})
-    mocker.patch("src.app.security.is_token_revoked", return_value=False)
+    mocker.patch("src.wishlist_api.app.security.is_token_revoked", return_value=False)
     credentials = HTTPAuthorizationCredentials(scheme="Bearer", credentials=token)
 
     with pytest.raises(NotFoundError):
