@@ -195,6 +195,13 @@ jobs:
           docker tag wishlist-api:ci ghcr.io/${{ github.repository }}/wishlist-api:staging
           docker push ghcr.io/${{ github.repository }}/wishlist-api:staging
 
+      - name: Mock deploy to staging
+        run: |
+          docker run -d --name staging-app -p 8080:8000 ghcr.io/${{ github.repository }}/wishlist-api:staging
+          sleep 10
+          docker logs staging-app
+          docker rm -f staging-app
+
 
   promote-prod:
     needs: container
