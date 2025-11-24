@@ -32,6 +32,8 @@ COPY --from=builder /install /usr/local
 
 COPY src ./src
 
+ENV PYTHONPATH="/app/src"
+
 RUN chown -R app:app /app
 
 USER app
