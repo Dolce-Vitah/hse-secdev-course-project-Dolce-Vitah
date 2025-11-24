@@ -1,8 +1,8 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from src.app.main import app
-from src.domain.models import User, UserRole
+from src.wishlist_api.app.main import app
+from src.wishlist_api.domain.models import User, UserRole
 
 
 @pytest.fixture()
@@ -52,7 +52,7 @@ def test_admin_promote_user_success(client, session):
     session.add(user)
     session.commit()
 
-    from src.app.security import create_access_token
+    from src.wishlist_api.app.security import create_access_token
 
     token = create_access_token({"sub": str(admin.id), "role": "admin"})
     headers = {"Authorization": f"Bearer {token}"}
@@ -130,7 +130,7 @@ def test_promote_by_non_admin(client, session):
     session.add(target)
     session.commit()
 
-    from src.app.security import create_access_token
+    from src.wishlist_api.app.security import create_access_token
 
     token = create_access_token({"sub": str(user.id), "role": "user"})
     headers = {"Authorization": f"Bearer {token}"}
@@ -145,7 +145,7 @@ def test_promote_nonexistent_user(client, session):
     session.add(admin)
     session.commit()
 
-    from src.app.security import create_access_token
+    from src.wishlist_api.app.security import create_access_token
 
     token = create_access_token({"sub": str(admin.id), "role": "admin"})
     headers = {"Authorization": f"Bearer {token}"}

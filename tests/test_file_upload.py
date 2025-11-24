@@ -2,7 +2,7 @@ import io
 
 from fastapi.testclient import TestClient
 
-from src.app.main import app
+from src.wishlist_api.app.main import app
 
 client = TestClient(app)
 

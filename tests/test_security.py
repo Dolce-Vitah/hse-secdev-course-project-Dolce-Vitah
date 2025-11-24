@@ -6,7 +6,7 @@ from fastapi.security import HTTPAuthorizationCredentials
 from jose import jwt
 from sqlmodel import Session
 
-from src.app.security import (
+from src.wishlist_api.app.security import (
     ALGORITHM,
     JWT_SECRET_CURRENT,
     create_access_token,
@@ -14,8 +14,8 @@ from src.app.security import (
     get_password_hash,
     verify_password,
 )
-from src.domain.models import User
-from src.shared.errors import AuthenticationError, NotFoundError
+from src.wishlist_api.domain.models import User
+from src.wishlist_api.shared.errors import AuthenticationError, NotFoundError
 
 
 def test_password_hash_and_verify():
