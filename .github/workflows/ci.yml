@@ -63,7 +63,7 @@ jobs:
         run: flake8 .
 
       - name: Mypy
-        run: mypy wishlist_api
+        run: mypy src
 
       - name: Bandit
         run: bandit -r . -lll
