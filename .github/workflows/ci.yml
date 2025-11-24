@@ -51,7 +51,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt -r requirements-dev.txt
-          pip install ruff black isort flake8 flake8-bugbear bandit pytest-cov coverage mypy
+          pip install flake8 flake8-bugbear flake8-pyproject bandit pytest-cov coverage mypy
 
       - name: Ruff
         run: ruff check --output-format=github .
