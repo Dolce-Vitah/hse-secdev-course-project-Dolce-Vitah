@@ -1,4 +1,5 @@
-name: CI
+name: CI/CD Pipeline
+
 on:
   pull_request:
   push:
@@ -14,30 +15,43 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  build-and-test:
+    name: Build & Test (${{ matrix.os }} / py${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.10", "3.11", "3.12"]
+
     env:
-      DATABASE_URL: "sqlite:////app/db/database.sqlite"
+      DATABASE_URL: ${{ secrets.DEV_DATABASE_URL }}
       TEST_DATABASE_URL: "sqlite:///./test.db"
-      SECRET_KEY: "wishlist-secret-key"
-      ALGORITHM: "HS256"
-      ACCESS_TOKEN_EXPIRE_MINUTES: 60
+      SECRET_KEY: ${{ secrets.JWT_SECRET }}
+      ALGORITHM: ${{ vars.ALGORITHM }}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${{ vars.ACCESS_TOKEN_EXPIRE_MINUTES }}
 
     steps:
       - uses: actions/checkout@v4
 
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements*.txt') }}
+
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-          cache: "pip"
+          python-version: ${{ matrix.python-version }}
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt -r requirements-dev.txt
-          pip install flake8 flake8-bugbear flake8-pyproject bandit pytest-cov coverage
-
+          pip install flake8 flake8-bugbear flake8-pyproject bandit pytest-cov coverage mypy
 
       - name: Ruff
         run: ruff check --output-format=github .
@@ -45,48 +59,59 @@ jobs:
       - name: Black
         run: black --check .
 
-      - name: isort
-        run: isort --check-only .
-
-      - name: Flake8 (with bugbear)
+      - name: Flake8
         run: flake8 .
 
       - name: Mypy
-        run: mypy src || (echo "mypy failed" && false)
+        run: mypy src
 
-      - name: Bandit security scan
+      - name: Bandit
         run: bandit -r . -lll
 
-
-      - name: Tests with coverage (80% quality gate)
+      - name: Tests with coverage
         run: |
           pytest \
             -q \
             --cov=src \
-            --cov-report=term \
             --cov-report=xml:coverage.xml \
+            --cov-report=html \
             --junitxml=junit.xml \
             --cov-fail-under=80
 
-
-      - name: Upload coverage & junit artifacts
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
-          name: ci-artifacts
+          name: test-artifacts-${{ matrix.os }}-py${{ matrix.python-version }}
           path: |
             coverage.xml
             junit.xml
+            htmlcov/
 
-      - name: Coverage summary
-        if: always()
-        run: coverage report || true
+      - name: Build wheel
+        run: |
+          pip install build
+          python -m build --wheel
+
+      - name: Upload wheel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheel-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: dist/*.whl
+
 
   container:
-    needs: build
+    needs: build-and-test
     runs-on: ubuntu-latest
-    steps:
 
+    steps:
       - uses: actions/checkout@v4
+
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: docker-${{ github.sha }}
+          restore-keys: |
+            docker-
 
       - name: Install hadolint
         run: |
@@ -97,8 +122,18 @@ jobs:
       - name: Hadolint
         run: hadolint Dockerfile
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          install: true
+
       - name: Build Docker image
-        run: docker build -t wishlist-api:ci .
+        run: |
+          docker build \
+            --cache-from=type=local,src=/tmp/.buildx-cache \
+            --cache-to=type=local,dest=/tmp/.buildx-cache \
+            --load \
+            -t wishlist-api:ci .
 
       - uses: aquasecurity/trivy-action@0.28.0
         with:
@@ -112,12 +147,20 @@ jobs:
           name: trivy-report
           path: trivy-image-report.json
 
+      - name: Save Docker image
+        run: docker save wishlist-api:ci | gzip > wishlist-image.tar.gz
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: docker-image
+          path: wishlist-image.tar.gz
+
       - name: Run container
         run: |
           docker run -d --name wishlist-api -p 8000:8000 wishlist-api:ci
           sleep 5
 
-      - name: Check non-root
+      - name: Check non-root user
         run: |
           uid=$(docker exec wishlist-api id -u)
           test "$uid" != "0"
@@ -132,6 +175,116 @@ jobs:
           done
           exit 1
 
-      - name: Stop container
+      - name: Cleanup
         if: always()
         run: docker rm -f wishlist-api || true
+
+
+  push-staging:
+    needs: container
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download wheels
+        uses: actions/download-artifact@v4
+        with:
+          pattern: wheel-*
+          merge-multiple: true
+          path: wheels/
+
+      - name: List wheels
+        run: ls -l wheels
+
+      - name: Install twine
+        run: python -m pip install --upgrade pip twine
+
+      - name: Upload wheels to PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          python -m twine upload wheels/*.whl
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download docker image
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+          path: .
+
+      - name: Load CI image
+        run: docker load < wishlist-image.tar.gz
+
+      - name: Tag & Push staging image
+        run: |
+          docker tag wishlist-api:ci ghcr.io/${{ github.repository }}/wishlist-api:staging
+          docker push ghcr.io/${{ github.repository }}/wishlist-api:staging
+
+      - name: Mock deploy to staging
+        run: |
+          docker run -d --name staging-app -p 8080:8000 ghcr.io/${{ github.repository }}/wishlist-api:staging
+          sleep 10
+          docker logs staging-app
+          docker rm -f staging-app
+
+
+  promote-prod:
+    needs: container
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download wheels
+        uses: actions/download-artifact@v4
+        with:
+          pattern: wheel-*
+          merge-multiple: true
+          path: wheels/
+
+      - name: List wheels
+        run: ls -l wheels
+
+      - name: Install twine
+        run: python -m pip install --upgrade pip twine
+
+      - name: Upload wheels to PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          python -m twine upload wheels/*.whl
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Download docker image
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-image
+          path: .
+
+      - name: Load image
+        run: docker load < wishlist-image.tar.gz
+
+      - name: Tag & Push prod image
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/}
+          docker tag wishlist-api:ci ghcr.io/${{ github.repository }}/wishlist-api:${VERSION}
+          docker tag wishlist-api:ci ghcr.io/${{ github.repository }}/wishlist-api:latest
+          docker push ghcr.io/${{ github.repository }}/wishlist-api:${VERSION}
+          docker push ghcr.io/${{ github.repository }}/wishlist-api:latest

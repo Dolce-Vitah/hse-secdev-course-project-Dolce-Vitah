@@ -5,7 +5,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
-from src.shared.errors import problem
+from src.wishlist_api.shared.errors import problem
 
 MAX_REQUEST_SIZE = 2 * 1024 * 1024
 

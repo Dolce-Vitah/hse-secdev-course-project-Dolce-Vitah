@@ -6,10 +6,14 @@ from fastapi.testclient import TestClient
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine
 
-from src.adapters import database
-from src.app.main import app
-from src.app.security import create_access_token, get_current_user, get_password_hash
-from src.domain.models import User, UserRole
+from src.wishlist_api.adapters import database
+from src.wishlist_api.app.main import app
+from src.wishlist_api.app.security import (
+    create_access_token,
+    get_current_user,
+    get_password_hash,
+)
+from src.wishlist_api.domain.models import User, UserRole
 
 TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL", "sqlite:///./test.db")
 

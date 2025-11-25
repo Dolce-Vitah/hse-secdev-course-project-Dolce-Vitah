@@ -7,8 +7,8 @@ from fastapi import APIRouter, Depends
 from fastapi.security import HTTPAuthorizationCredentials
 from sqlmodel import Session, select
 
-from src.adapters.database import get_session
-from src.app.security import (
+from src.wishlist_api.adapters.database import get_session
+from src.wishlist_api.app.security import (
     bearer_scheme,
     create_access_token,
     get_current_user,
@@ -16,9 +16,9 @@ from src.app.security import (
     logout_user,
     verify_password,
 )
-from src.domain.models import User, UserRole
-from src.domain.schemas import Token, UserCreate
-from src.shared.errors import (
+from src.wishlist_api.domain.models import User, UserRole
+from src.wishlist_api.domain.schemas import Token, UserCreate
+from src.wishlist_api.shared.errors import (
     AuthenticationError,
     AuthorizationError,
     InternalServerError,

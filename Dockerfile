@@ -21,9 +21,9 @@ RUN addgroup -S app && adduser -S app -G app
 WORKDIR /app
 
 RUN apk add --no-cache \
-    libpq=16.10-r0 \
-    wget=1.24.5-r0 \
-    sqlite=3.45.3-r2
+    libpq \
+    wget \
+    sqlite
 
 RUN mkdir -p /app/uploads /app/db \
     && chown -R app:app /app/uploads /app/db
@@ -31,6 +31,8 @@ RUN mkdir -p /app/uploads /app/db \
 COPY --from=builder /install /usr/local
 
 COPY src ./src
+
+ENV PYTHONPATH="/app/src"
 
 RUN chown -R app:app /app
 
@@ -41,4 +43,4 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
     CMD wget -qO- http://localhost:8000/health || exit 1
 
-CMD ["uvicorn", "src.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "wishlist_api.app.main:app", "--host", "0.0.0.0", "--port", "8000"]

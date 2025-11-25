@@ -4,10 +4,13 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from src.adapters.database import init_db
-from src.app.api import auth, wishes
-from src.app.middleware import CorrelationIdMiddleware, RequestSizeLimitMiddleware
-from src.shared.errors import AppError, problem
+from src.wishlist_api.adapters.database import init_db
+from src.wishlist_api.app.api import auth, wishes
+from src.wishlist_api.app.middleware import (
+    CorrelationIdMiddleware,
+    RequestSizeLimitMiddleware,
+)
+from src.wishlist_api.shared.errors import AppError, problem
 
 app = FastAPI(title="Wishlist API")
 

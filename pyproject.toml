@@ -1,3 +1,24 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wishlist_api"
+version = "0.1.0"
+description = "Wishlist API service"
+readme = "README.md"
+requires-python = ">=3.10"
+
+authors = [
+    { name = "Valentina" }
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
 [tool.ruff]
 line-length = 100
 lint.select = ["E","F","W","I"]
@@ -10,6 +31,7 @@ line_length = 100
 
 [tool.mypy]
 python_version = "3.11"
+explicit_package_bases = true
 check_untyped_defs = true
 disallow_untyped_defs = false
 ignore_missing_imports = true

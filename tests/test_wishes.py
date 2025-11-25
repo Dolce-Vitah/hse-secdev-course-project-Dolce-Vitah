@@ -104,8 +104,8 @@ def test_get_wish_forbidden(client_with_user, client, another_user):
     assert response.status_code == 200, f"Unexpected: {response.text}"
     wish_id = response.json()["id"]
 
-    from src.app.main import app
-    from src.app.security import get_current_user
+    from src.wishlist_api.app.main import app
+    from src.wishlist_api.app.security import get_current_user
 
     app.dependency_overrides[get_current_user] = lambda: another_user["user"]
 
@@ -140,8 +140,8 @@ def test_update_wish_forbidden(client_with_user, another_user, client):
     ), f"Create response: {create_response.json()}"
     wish_id = create_response.json()["id"]
 
-    from src.app.main import app
-    from src.app.security import get_current_user
+    from src.wishlist_api.app.main import app
+    from src.wishlist_api.app.security import get_current_user
 
     app.dependency_overrides[get_current_user] = lambda: another_user["user"]
 
@@ -180,8 +180,8 @@ def test_delete_wish_forbidden(client_with_user, another_user, client):
     assert r.status_code == 200, f"Response JSON: {r.json()}"
     wish_id = r.json()["id"]
 
-    from src.app.main import app
-    from src.app.security import get_current_user
+    from src.wishlist_api.app.main import app
+    from src.wishlist_api.app.security import get_current_user
 
     app.dependency_overrides[get_current_user] = lambda: another_user["user"]
 

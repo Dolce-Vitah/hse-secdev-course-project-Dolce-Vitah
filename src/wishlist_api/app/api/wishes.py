@@ -10,11 +10,11 @@ from fastapi.responses import Response
 from sqlalchemy import Numeric, cast
 from sqlmodel import Session, select
 
-from src.adapters.database import get_session
-from src.app.security import get_current_user
-from src.domain.models import User, Wish
-from src.domain.schemas import WishCreate, WishRead, WishUpdate
-from src.shared.errors import NotFoundError, problem
+from src.wishlist_api.adapters.database import get_session
+from src.wishlist_api.app.security import get_current_user
+from src.wishlist_api.domain.models import User, Wish
+from src.wishlist_api.domain.schemas import WishCreate, WishRead, WishUpdate
+from src.wishlist_api.shared.errors import NotFoundError, problem
 
 router = APIRouter(prefix="/wishes", tags=["wishes"])
 

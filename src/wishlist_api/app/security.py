@@ -7,9 +7,9 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlmodel import Session
 
-from src.adapters.database import get_session
-from src.domain.models import User
-from src.shared.errors import AuthenticationError, NotFoundError
+from src.wishlist_api.adapters.database import get_session
+from src.wishlist_api.domain.models import User
+from src.wishlist_api.shared.errors import AuthenticationError, NotFoundError
 
 from .utils.token_utils import is_token_revoked, revoke_token
 
