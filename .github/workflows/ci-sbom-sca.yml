@@ -74,14 +74,20 @@ jobs:
           mkdir -p "${{ env.EVIDENCE_DIR }}"
           jq -r -f filter.jq "${{ env.EVIDENCE_DIR }}/sca_report.json" > "${{ env.EVIDENCE_DIR }}/sca_summary.md" || true
 
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: p09-sbom
+          path: ${{ env.EVIDENCE_DIR }}/sbom.json
+
       - name: Upload SCA artifacts
         uses: actions/upload-artifact@v4
         with:
           name: p09-sca
           path: |
-            ${{ env.EVIDENCE_DIR }}/sbom.json
             ${{ env.EVIDENCE_DIR }}/sca_report.json
             ${{ env.EVIDENCE_DIR }}/sca_summary.md
+            ${{ env.EVIDENCE_DIR }}/metadata.txt
 
       - name: List evidence
         run: ls -la "${{ env.EVIDENCE_DIR }}" || true
