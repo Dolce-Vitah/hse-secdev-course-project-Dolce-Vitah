@@ -22,15 +22,13 @@ concurrency:
 
 jobs:
   sbom-sca:
-    name: SBOM & SCA (Syft → Grype)
     runs-on: ubuntu-latest
     timeout-minutes: 30
-
     env:
       SYFT_IMAGE: anchore/syft@sha256:825cad3a952c87676a6d07e9a3bb05ac9c401d598360070e970aa46d54c1727e
       GRYPE_IMAGE: anchore/grype@sha256:e7d3cb36d2ebfb522141d83a5d0df9cda301f7e9f8747ee4af41f12c478fa77c
       EVIDENCE_DIR: EVIDENCE/P09
-      TOP_FINDINGS: 10
+      TOP_FINDINGS: 20
 
     steps:
       - name: Checkout
@@ -43,21 +41,13 @@ jobs:
         run: |
           docker run --rm -v "${{ github.workspace }}":/work -w /work ${{ env.SYFT_IMAGE }} scan dir:. -o cyclonedx-json > "${{ env.EVIDENCE_DIR }}/sbom.json"
 
-      - name: Upload SBOM artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: p09-sbom
-          path: ${{ env.EVIDENCE_DIR }}/sbom.json
-
-      - name: Run SCA (Grype) using SBOM (continue to summary even if vulnerabilities found)
+      - name: Run SCA (Grype) using SBOM (continue if vulnerabilities found)
         run: |
           docker run --rm -v "${{ github.workspace }}":/work -w /work -e GRYPE_LOG=error ${{ env.GRYPE_IMAGE }} sbom:/work/${{ env.EVIDENCE_DIR }}/sbom.json -o json > "${{ env.EVIDENCE_DIR }}/sca_report.json" || true
 
-      - name: Generate detailed SCA summary (human-readable)
+      - name: Generate detailed SCA summary (robust jq)
         run: |
-          set -e
           apt-get update -y && apt-get install -y jq || true
-
           SR="${{ env.EVIDENCE_DIR }}/sca_report.json"
           SUMMARY="${{ env.EVIDENCE_DIR }}/sca_summary.md"
           echo "# SCA summary" > "$SUMMARY"
@@ -68,24 +58,46 @@ jobs:
             jq '[.matches[].vulnerability.severity] | group_by(.) | map({(.[0]): length}) | add' "$SR" >> "$SUMMARY" || echo "{}" >> "$SUMMARY"
 
             echo "" >> "$SUMMARY"
-            echo "## Top findings (sorted by severity and confidence)" >> "$SUMMARY"
+            echo "## Top findings (sorted by severity)" >> "$SUMMARY"
 
-            # define severity ordering for sorting (CRITICAL > HIGH > MEDIUM > LOW > UNKNOWN > INFO)
-            # We'll map severities to numeric values for sorting
+            # more robust extraction: handle different fields and severity case-insensitively
             jq -r --argjson n ${{ env.TOP_FINDINGS }} '
-              def sevscore:
-                if .vulnerability.severity == "CRITICAL" then 6
-                elif .vulnerability.severity == "HIGH" then 5
-                elif .vulnerability.severity == "MEDIUM" then 4
-                elif .vulnerability.severity == "LOW" then 3
-                elif .vulnerability.severity == "UNKNOWN" then 2
+              def sevscore($s):
+                if ($s|ascii_upcase) == "CRITICAL" then 6
+                elif ($s|ascii_upcase) == "HIGH" then 5
+                elif ($s|ascii_upcase) == "MEDIUM" then 4
+                elif ($s|ascii_upcase) == "LOW" then 3
+                elif ($s|ascii_upcase) == "UNKNOWN" then 2
                 else 1 end;
               .matches
-              | map({score: (sevscore), id: .vulnerability.id, severity: .vulnerability.severity, pkg: (.artifact.name // "unknown"), ver: (.artifact.version // "unknown"), desc: (.vulnerability.description // ""), refs: (.vulnerability.dataSource // "") , fix: (.vulnerability.fix_versions // .vulnerability.fixed_in // []) })
+              | map(
+                  . as $m
+                  | {
+                      id: ($m.vulnerability.id // ($m.relatedVulnerabilities[0].id // "N/A")),
+                      severity: ($m.vulnerability.severity // "UNKNOWN"),
+                      pkg: ($m.artifact.name // ($m.artifact.purl // "unknown")),
+                      ver: ($m.artifact.version // "unknown"),
+                      desc: ($m.vulnerability.description // "") ,
+                      refs: (($m.vulnerability.dataSource // "") + (if ($m.relatedVulnerabilities|length>0) then ("; " + ($m.relatedVulnerabilities[0].dataSource // "")) else "" end)),
+                      fixes: (
+                        ($m.vulnerability.fix.versions // $m.vulnerability.fix_versions // ($m.vulnerability.fix_versions // []))
+                        + ( [ ($m.matchDetails[]?.fix?.suggestedVersion // empty) ] )
+                        + ( [ ($m.matchDetails[]?.found?.fixed_in // empty) ] )
+                      )
+                    }
+                )
+              | map(. + {score: sevscore(.severity) })
               | sort_by(.score) | reverse
               | .[0:($n)]
-              | .[] |
-              ("- **" + (.id // "N/A") + "**  \n  - severity: " + (.severity // "N/A") + "  \n  - package: " + (.pkg // "N/A") + "@" + (.ver // "N/A") + "  \n  - description: " + ((.desc|gsub("\n"; " ") | .[0:300]) // "") + (if (.desc|length) > 300 then "..." else "" end) + "  \n  - references: " + (.refs // "none") + "  \n  - suggested action: " + (if (.fix|length > 0) then ("consider upgrade to: " + (.fix | join(", "))) else "investigate / consider waiver" end)
+              | .[]
+              | (
+                "- **" + (.id // "N/A") + "**  \n" +
+                "  - severity: " + (.severity // "N/A") + "  \n" +
+                "  - package: " + (.pkg // "N/A") + \"@\" + (.ver // "N/A") + "  \n" +
+                "  - description: " + ((.desc|gsub(\"\\n\"; \" \") | .[0:400]) // "") + (if (.desc|length) > 400 then "..." else "" end) + "  \n" +
+                "  - references: " + (.refs // "none") + "  \n" +
+                "  - suggested action: " + (if (.fixes | length > 0) then ("consider upgrade to: " + (.fixes | map(select(. != "")) | unique | join(\", "))) else "investigate / consider waiver" end)
+              )
             ' "$SR" >> "$SUMMARY" || echo "- No detailed matches found" >> "$SUMMARY"
 
             echo "" >> "$SUMMARY"
@@ -96,7 +108,7 @@ jobs:
             echo "No sca_report.json content found." >> "$SUMMARY"
           fi
 
-      - name: Upload SCA artifacts
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: p09-sca
