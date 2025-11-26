@@ -27,8 +27,8 @@ jobs:
     timeout-minutes: 30
 
     env:
-      SYFT_IMAGE: anchore/syft:0.93.0
-      GRYPE_IMAGE: anchore/grype:0.70.1
+      SYFT_IMAGE: anchore/syft@sha256:825cad3a952c87676a6d07e9a3bb05ac9c401d598360070e970aa46d54c1727e
+      GRYPE_IMAGE: anchore/grype@sha256:e7d3cb36d2ebfb522141d83a5d0df9cda301f7e9f8747ee4af41f12c478fa77c
       EVIDENCE_DIR: EVIDENCE/P09
 
     steps:
