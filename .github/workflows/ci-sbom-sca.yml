@@ -47,6 +47,26 @@ jobs:
         run: |
           docker run --rm -v "${{ github.workspace }}":/work -w /work -e GRYPE_LOG=error ${{ env.GRYPE_IMAGE }} sbom:/work/${{ env.EVIDENCE_DIR }}/sbom.json -o json > "${{ env.EVIDENCE_DIR }}/sca_report.json" || true
 
+      - name: Generate metadata (bind SBOM to commit/run)
+        run: |
+          mkdir -p "${{ env.EVIDENCE_DIR }}"
+          REPO="${GITHUB_REPOSITORY}"
+          RUN_ID="${GITHUB_RUN_ID}"
+          SHA="${GITHUB_SHA}"
+          REF="${GITHUB_REF}"
+          TAG="${GITHUB_REF#refs/tags/}"
+          RUN_URL="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          GENERATED_AT="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+          echo "repository: ${REPO}" > "${{ env.EVIDENCE_DIR }}/metadata.txt"
+          echo "run_id: ${RUN_ID}" >> "${{ env.EVIDENCE_DIR }}/metadata.txt"
+          echo "run_url: ${RUN_URL}" >> "${{ env.EVIDENCE_DIR }}/metadata.txt"
+          echo "commit: ${SHA}" >> "${{ env.EVIDENCE_DIR }}/metadata.txt"
+          echo "ref: ${REF}" >> "${{ env.EVIDENCE_DIR }}/metadata.txt"
+          echo "tag: ${TAG}" >> "${{ env.EVIDENCE_DIR }}/metadata.txt"
+          echo "generated_at: ${GENERATED_AT}" >> "${{ env.EVIDENCE_DIR }}/metadata.txt"
+          echo "syft_image: ${{ env.SYFT_IMAGE }}" >> "${{ env.EVIDENCE_DIR }}/metadata.txt"
+          echo "grype_image: ${{ env.GRYPE_IMAGE }}" >> "${{ env.EVIDENCE_DIR }}/metadata.txt"
+
       - name: Generate detailed SCA summary (use filter.jq)
         run: |
           sudo apt-get update -y
