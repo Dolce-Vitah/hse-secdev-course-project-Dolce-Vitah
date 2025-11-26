@@ -22,8 +22,10 @@ concurrency:
 
 jobs:
   sbom-sca:
+    name: SBOM & SCA (Syft → Grype)
     runs-on: ubuntu-latest
     timeout-minutes: 30
+
     env:
       SYFT_IMAGE: anchore/syft@sha256:825cad3a952c87676a6d07e9a3bb05ac9c401d598360070e970aa46d54c1727e
       GRYPE_IMAGE: anchore/grype@sha256:e7d3cb36d2ebfb522141d83a5d0df9cda301f7e9f8747ee4af41f12c478fa77c
@@ -45,77 +47,21 @@ jobs:
         run: |
           docker run --rm -v "${{ github.workspace }}":/work -w /work -e GRYPE_LOG=error ${{ env.GRYPE_IMAGE }} sbom:/work/${{ env.EVIDENCE_DIR }}/sbom.json -o json > "${{ env.EVIDENCE_DIR }}/sca_report.json" || true
 
-      - name: Generate detailed SCA summary (robust jq)
+      - name: Generate detailed SCA summary (use filter.jq)
         run: |
-          apt-get update -y && apt-get install -y jq || true
-          SR="${{ env.EVIDENCE_DIR }}/sca_report.json"
-          SUMMARY="${{ env.EVIDENCE_DIR }}/sca_summary.md"
-          echo "# SCA summary" > "$SUMMARY"
+          sudo apt-get update -y
+          sudo apt-get install -y jq
+          mkdir -p "${{ env.EVIDENCE_DIR }}"
+          jq -r -f filter.jq "${{ env.EVIDENCE_DIR }}/sca_report.json" > "${{ env.EVIDENCE_DIR }}/sca_summary.md" || true
 
-          if [ -s "$SR" ]; then
-            echo "" >> "$SUMMARY"
-            echo "## Counts by severity" >> "$SUMMARY"
-            jq '[.matches[].vulnerability.severity] | group_by(.) | map({(.[0]): length}) | add' "$SR" >> "$SUMMARY" || echo "{}" >> "$SUMMARY"
-
-            echo "" >> "$SUMMARY"
-            echo "## Top findings (sorted by severity)" >> "$SUMMARY"
-
-            # more robust extraction: handle different fields and severity case-insensitively
-            jq -r --argjson n ${{ env.TOP_FINDINGS }} '
-              def sevscore($s):
-                if ($s|ascii_upcase) == "CRITICAL" then 6
-                elif ($s|ascii_upcase) == "HIGH" then 5
-                elif ($s|ascii_upcase) == "MEDIUM" then 4
-                elif ($s|ascii_upcase) == "LOW" then 3
-                elif ($s|ascii_upcase) == "UNKNOWN" then 2
-                else 1 end;
-              .matches
-              | map(
-                  . as $m
-                  | {
-                      id: ($m.vulnerability.id // ($m.relatedVulnerabilities[0].id // "N/A")),
-                      severity: ($m.vulnerability.severity // "UNKNOWN"),
-                      pkg: ($m.artifact.name // ($m.artifact.purl // "unknown")),
-                      ver: ($m.artifact.version // "unknown"),
-                      desc: ($m.vulnerability.description // "") ,
-                      refs: (($m.vulnerability.dataSource // "") + (if ($m.relatedVulnerabilities|length>0) then ("; " + ($m.relatedVulnerabilities[0].dataSource // "")) else "" end)),
-                      fixes: (
-                        ($m.vulnerability.fix.versions // $m.vulnerability.fix_versions // ($m.vulnerability.fix_versions // []))
-                        + ( [ ($m.matchDetails[]?.fix?.suggestedVersion // empty) ] )
-                        + ( [ ($m.matchDetails[]?.found?.fixed_in // empty) ] )
-                      )
-                    }
-                )
-              | map(. + {score: sevscore(.severity) })
-              | sort_by(.score) | reverse
-              | .[0:($n)]
-              | .[]
-              | (
-                "- **" + (.id // "N/A") + "**  \n" +
-                "  - severity: " + (.severity // "N/A") + "  \n" +
-                "  - package: " + (.pkg // "N/A") + \"@\" + (.ver // "N/A") + "  \n" +
-                "  - description: " + ((.desc|gsub(\"\\n\"; \" \") | .[0:400]) // "") + (if (.desc|length) > 400 then "..." else "" end) + "  \n" +
-                "  - references: " + (.refs // "none") + "  \n" +
-                "  - suggested action: " + (if (.fixes | length > 0) then ("consider upgrade to: " + (.fixes | map(select(. != "")) | unique | join(\", "))) else "investigate / consider waiver" end)
-              )
-            ' "$SR" >> "$SUMMARY" || echo "- No detailed matches found" >> "$SUMMARY"
-
-            echo "" >> "$SUMMARY"
-            echo "## Notes" >> "$SUMMARY"
-            echo "- Full machine-readable report: sca_report.json" >> "$SUMMARY"
-            echo "- For High/Critical items consider creating fix PRs or waivers (policy/waivers.yml)" >> "$SUMMARY"
-          else
-            echo "No sca_report.json content found." >> "$SUMMARY"
-          fi
-
-      - name: Upload artifacts
+      - name: Upload SCA artifacts
         uses: actions/upload-artifact@v4
         with:
           name: p09-sca
           path: |
+            ${{ env.EVIDENCE_DIR }}/sbom.json
             ${{ env.EVIDENCE_DIR }}/sca_report.json
             ${{ env.EVIDENCE_DIR }}/sca_summary.md
-            ${{ env.EVIDENCE_DIR }}/sbom.json
 
       - name: List evidence
         run: ls -la "${{ env.EVIDENCE_DIR }}" || true
