@@ -1,0 +1,9 @@
+repository: Dolce-Vitah/hse-secdev-course-project-Dolce-Vitah
+run_id: 19715337300
+run_url: https://github.com/Dolce-Vitah/hse-secdev-course-project-Dolce-Vitah/actions/runs/19715337300
+commit: 05eaf1135f3c116b2a9d6558aaf5355e26edd46a
+ref: refs/heads/p09-sbom-sca
+tag: refs/heads/p09-sbom-sca
+generated_at: 2025-11-26T19:34:03Z
+syft_image: anchore/syft@sha256:825cad3a952c87676a6d07e9a3bb05ac9c401d598360070e970aa46d54c1727e
+grype_image: anchore/grype@sha256:e7d3cb36d2ebfb522141d83a5d0df9cda301f7e9f8747ee4af41f12c478fa77c
