@@ -1,11 +1,11 @@
-waivers: []
-# Пример записи:
-# waivers:
-#   - id: "CVE-2024-XXXX"
-#     package: "example-lib"
-#     version: "1.2.3"
-#     severity: "High"
-#     reason: "Транзитивная зависимость; нет фикса; компонент не в прод-цепочке."
-#     issue: "https://github.com/<org>/<repo>/issues/123"
-#     expires_at: "2025-12-31"
-#     approved_by: "tutor@example.org"
+waivers:
+  - id: "CVE-2024-23342"
+    scope:
+      package: "ecdsa"
+      version: "==0.19.1"
+    reason: "No patched version available upstream. Library used only in offline tooling (low exposure). Migration to pyca/cryptography planned but requires coordinated work."
+    author: "Dolce-Vitah"
+    created: "2025-11-26"
+    expires: "2026-12-03"
+    related_issue: "https://github.com/Dolce-Vitah/hse-secdev-course-project-Dolce-Vitah/issues/11"
+    notes: "Plan: monitor upstream for patch; if not available by expiry, implement migration to alternative crypto library and remove waiver."
