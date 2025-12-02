@@ -1,0 +1,93 @@
+name: Security - SBOM & SCA
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'requirements*.txt'
+      - '**/*.py'
+      - '.github/workflows/ci-sbom-sca.yml'
+  pull_request:
+    paths:
+      - 'requirements*.txt'
+      - '**/*.py'
+      - '.github/workflows/ci-sbom-sca.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sbom-sca-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sbom-sca:
+    name: SBOM & SCA (Syft → Grype)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    env:
+      SYFT_IMAGE: anchore/syft@sha256:825cad3a952c87676a6d07e9a3bb05ac9c401d598360070e970aa46d54c1727e
+      GRYPE_IMAGE: anchore/grype@sha256:e7d3cb36d2ebfb522141d83a5d0df9cda301f7e9f8747ee4af41f12c478fa77c
+      EVIDENCE_DIR: EVIDENCE/P09
+      TOP_FINDINGS: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare evidence directory
+        run: mkdir -p "${{ env.EVIDENCE_DIR }}"
+
+      - name: Generate SBOM (CycloneDX) with Syft
+        run: |
+          docker run --rm -v "${{ github.workspace }}":/work -w /work ${{ env.SYFT_IMAGE }} scan dir:. -o cyclonedx-json > "${{ env.EVIDENCE_DIR }}/sbom.json"
+
+      - name: Run SCA (Grype) using SBOM (continue if vulnerabilities found)
+        run: |
+          docker run --rm -v "${{ github.workspace }}":/work -w /work -e GRYPE_LOG=error ${{ env.GRYPE_IMAGE }} sbom:/work/${{ env.EVIDENCE_DIR }}/sbom.json -o json > "${{ env.EVIDENCE_DIR }}/sca_report.json" || true
+
+      - name: Generate metadata (bind SBOM to commit/run)
+        run: |
+          mkdir -p "${{ env.EVIDENCE_DIR }}"
+          REPO="${GITHUB_REPOSITORY}"
+          RUN_ID="${GITHUB_RUN_ID}"
+          SHA="${GITHUB_SHA}"
+          REF="${GITHUB_REF}"
+          TAG="${GITHUB_REF#refs/tags/}"
+          RUN_URL="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          GENERATED_AT="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+          echo "repository: ${REPO}" > "${{ env.EVIDENCE_DIR }}/metadata.txt"
+          echo "run_id: ${RUN_ID}" >> "${{ env.EVIDENCE_DIR }}/metadata.txt"
+          echo "run_url: ${RUN_URL}" >> "${{ env.EVIDENCE_DIR }}/metadata.txt"
+          echo "commit: ${SHA}" >> "${{ env.EVIDENCE_DIR }}/metadata.txt"
+          echo "ref: ${REF}" >> "${{ env.EVIDENCE_DIR }}/metadata.txt"
+          echo "tag: ${TAG}" >> "${{ env.EVIDENCE_DIR }}/metadata.txt"
+          echo "generated_at: ${GENERATED_AT}" >> "${{ env.EVIDENCE_DIR }}/metadata.txt"
+          echo "syft_image: ${{ env.SYFT_IMAGE }}" >> "${{ env.EVIDENCE_DIR }}/metadata.txt"
+          echo "grype_image: ${{ env.GRYPE_IMAGE }}" >> "${{ env.EVIDENCE_DIR }}/metadata.txt"
+
+      - name: Generate detailed SCA summary (use filter.jq)
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y jq
+          mkdir -p "${{ env.EVIDENCE_DIR }}"
+          jq -r -f filter.jq "${{ env.EVIDENCE_DIR }}/sca_report.json" > "${{ env.EVIDENCE_DIR }}/sca_summary.md" || true
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: p09-sbom
+          path: ${{ env.EVIDENCE_DIR }}/sbom.json
+
+      - name: Upload SCA artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: p09-sca
+          path: |
+            ${{ env.EVIDENCE_DIR }}/sca_report.json
+            ${{ env.EVIDENCE_DIR }}/sca_summary.md
+            ${{ env.EVIDENCE_DIR }}/metadata.txt
+
+      - name: List evidence
+        run: ls -la "${{ env.EVIDENCE_DIR }}" || true
