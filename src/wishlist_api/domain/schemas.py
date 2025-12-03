@@ -32,7 +32,7 @@ class UserCreate(BaseModel):
 
 class Token(BaseModel):
     access_token: str
-    token_type: str = "bearer"  # nosemgrep
+    token_type: str = "bearer"
 
 
 class WishBase(BaseModel):
