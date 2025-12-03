@@ -1,0 +1,27 @@
+rules:
+  - id: python-hardcoded-secret-assignment
+    patterns:
+      - pattern-either:
+          - pattern: $VAR = "$SECRET"
+          - pattern: $VAR = '$SECRET'
+      - metavariable-regex:
+          metavariable: $VAR
+          regex: (?i)(password|secret|api_key|token|jwt_key)
+      - metavariable-regex:
+          metavariable: $SECRET
+          regex: ^(?!(os\.getenv|config|secrets|uuid)).{6,}$
+    message: "Возможно, жестко закодированный секрет в переменной '$VAR'. Используйте os.getenv()."
+    languages: [python]
+    severity: WARNING
+    metadata:
+      category: security
+
+  - id: python-sqlalchemy-hardcoded-secret
+    patterns:
+      - pattern: create_engine("...")
+      - pattern-regex: "://.*:.*@"
+    message: "Обнаружен пароль в строке подключения SQLAlchemy. Используйте переменные окружения."
+    languages: [python]
+    severity: ERROR
+    metadata:
+      category: security
