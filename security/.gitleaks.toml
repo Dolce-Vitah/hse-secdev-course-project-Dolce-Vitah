@@ -1,0 +1,15 @@
+title = "Wishlist API Secrets Config"
+
+[allowlist]
+description = "Global allowlist for false positives"
+paths = [
+    '''EVIDENCE/.*''',
+    '''^tests/.*''',
+    '''\.venv/.*''',
+    '''__pycache__'''
+]
+
+regexes = [
+    '''invalid_token_123''',
+    '''Password123_'''
+]
