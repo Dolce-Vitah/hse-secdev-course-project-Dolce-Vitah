@@ -32,7 +32,9 @@ class UserCreate(BaseModel):
 
 class Token(BaseModel):
     access_token: str
-    token_type: str = "bearer"
+    token_type: str = (
+        "bearer"  # nosemgrep: security.semgrep.python-hardcoded-secret-assignment
+    )
 
 
 class WishBase(BaseModel):
