@@ -4,6 +4,7 @@ rules:
       - pattern-either:
           - pattern: $VAR = "$SECRET"
           - pattern: $VAR = '$SECRET'
+      - pattern-not: token_type = $ANY
       - metavariable-regex:
           metavariable: $VAR
           regex: (?i)(password|secret|api_key|token|jwt_key)
