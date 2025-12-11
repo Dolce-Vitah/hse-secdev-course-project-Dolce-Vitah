@@ -47,6 +47,7 @@ jobs:
       - name: ZAP Baseline
         run: |
           set -x
+          chmod -R 777 "$PWD"
           docker run --rm --network host -v "$PWD":/zap/wrk ghcr.io/zaproxy/zaproxy:stable \
             zap-baseline.py \
               -t http://localhost:8080 \
