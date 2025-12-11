@@ -46,13 +46,29 @@ jobs:
 
       - name: ZAP Baseline
         run: |
+          set -x
           docker run --rm --network host -v $PWD:/zap/wrk owasp/zap2docker-stable \
             zap-baseline.py \
               -t http://localhost:8080 \
               -r zap_baseline.html \
               -J zap_baseline.json \
               -d || true
-          mv zap_baseline.* EVIDENCE/P11/ || true
+
+          echo "== After ZAP run, root dir =="
+          ls -la
+
+          echo "== EVIDENCE dir before mv =="
+          ls -la EVIDENCE || true
+          ls -la EVIDENCE/P11 || true
+
+          if ls zap_baseline.* 1> /dev/null 2>&1; then
+            mv zap_baseline.* EVIDENCE/P11/
+          else
+            echo "No zap_baseline.* files found in root"
+          fi
+
+          echo "== EVIDENCE/P11 after mv =="
+          ls -la EVIDENCE/P11 || true
 
       - name: Upload P11 evidence
         if: always()
