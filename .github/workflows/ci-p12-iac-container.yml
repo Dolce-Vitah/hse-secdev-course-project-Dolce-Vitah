@@ -42,21 +42,15 @@ jobs:
       - name: Checkov IaC scan
         run: |
           set -euxo pipefail
-
           mkdir -p EVIDENCE/P12
-
-          echo "Listing iac/:"
           ls -la iac
 
-          echo "Running Checkov against docker-compose as FILE..."
           timeout 5m docker run --rm \
             -v "$PWD":/work \
             bridgecrew/checkov:3.2.494 \
             -f /work/iac/docker-compose.yaml \
-            --framework docker-compose \
             -o json --compact \
-            | tee EVIDENCE/P12/checkov_report.json \
-            >/dev/null || true
+            > EVIDENCE/P12/checkov_report.json || true
 
           echo "Checkov report size:"
           wc -c EVIDENCE/P12/checkov_report.json || true
