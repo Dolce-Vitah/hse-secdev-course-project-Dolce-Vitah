@@ -53,7 +53,7 @@ jobs:
             -v "$PWD":/work \
             bridgecrew/checkov:3.2.494 \
             -d /work/"$TARGET_DIR" \
-            --framework kubernetes,terraform,dockerfile \
+            --framework kubernetes,terraform,cloudformation,arm,helm,dockerfile \
             -o json --compact \
             > EVIDENCE/P12/checkov_report.json || true
 
