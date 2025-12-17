@@ -6,10 +6,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    ports:
-      - "8000:8000"
     environment:
       PYTHONPATH: "/app/src"
+    ports:
+      - "8000:8000"
     read_only: true
     tmpfs:
       - /tmp
