@@ -43,22 +43,23 @@ jobs:
         run: |
           set -euxo pipefail
 
-          TARGET="iac"
-          if [ -d "k8s" ]; then TARGET="k8s"; fi
-          if [ -d "deploy" ]; then TARGET="deploy"; fi
+          mkdir -p EVIDENCE/P12
 
-          echo "Selected TARGET=${TARGET}"
-          ls -la "${TARGET}"
+          echo "Listing iac/:"
+          ls -la iac
 
-          if [ "${TARGET}" = "iac" ] && [ -f "iac/docker-compose.yaml" ]; then
-            docker run --rm -v "$PWD":/work bridgecrew/checkov:3.2.494 \
-              -f /work/iac/docker-compose.yaml \
-              -o json --compact > EVIDENCE/P12/checkov_report.json || true
-          else
-            docker run --rm -v "$PWD":/work bridgecrew/checkov:3.2.494 \
-              -d /work/${TARGET} \
-              -o json --compact > EVIDENCE/P12/checkov_report.json || true
-          fi
+          echo "Running Checkov against docker-compose as FILE..."
+          timeout 5m docker run --rm \
+            -v "$PWD":/work \
+            bridgecrew/checkov:3.2.494 \
+            -f /work/iac/docker-compose.yaml \
+            --framework docker-compose \
+            -o json --compact \
+            | tee EVIDENCE/P12/checkov_report.json \
+            >/dev/null || true
+
+          echo "Checkov report size:"
+          wc -c EVIDENCE/P12/checkov_report.json || true
 
       - name: Trivy image scan
         run: |
