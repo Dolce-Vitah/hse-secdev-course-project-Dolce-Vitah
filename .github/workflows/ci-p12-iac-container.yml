@@ -41,13 +41,24 @@ jobs:
 
       - name: Checkov IaC scan
         run: |
-          TARGET_DIR="iac"
-          if [ -d "k8s" ]; then TARGET_DIR="k8s"; fi
-          if [ -d "deploy" ]; then TARGET_DIR="deploy"; fi
-          docker run --rm -v $PWD:/work bridgecrew/checkov \
-            -d /work/${TARGET_DIR} \
-            -o json \
-            --compact > EVIDENCE/P12/checkov_report.json || true
+          set -euxo pipefail
+
+          TARGET="iac"
+          if [ -d "k8s" ]; then TARGET="k8s"; fi
+          if [ -d "deploy" ]; then TARGET="deploy"; fi
+
+          echo "Selected TARGET=${TARGET}"
+          ls -la "${TARGET}"
+
+          if [ "${TARGET}" = "iac" ] && [ -f "iac/docker-compose.yaml" ]; then
+            docker run --rm -v "$PWD":/work bridgecrew/checkov:3.2.494 \
+              -f /work/iac/docker-compose.yaml \
+              -o json --compact > EVIDENCE/P12/checkov_report.json || true
+          else
+            docker run --rm -v "$PWD":/work bridgecrew/checkov:3.2.494 \
+              -d /work/${TARGET} \
+              -o json --compact > EVIDENCE/P12/checkov_report.json || true
+          fi
 
       - name: Trivy image scan
         run: |
