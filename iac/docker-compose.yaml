@@ -2,12 +2,14 @@ version: "3.9"
 
 services:
   wishlist-api:
+    image: app:local
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: wishlist-api
     ports:
       - "8000:8000"
+    environment:
+      PYTHONPATH: "/app/src"
     read_only: true
     tmpfs:
       - /tmp
@@ -17,7 +19,6 @@ services:
     cap_drop:
       - ALL
     security_opt:
-      - apparmor=wishlist-apparmor
       - no-new-privileges:true
       - seccomp=./seccomp.json
     healthcheck:
