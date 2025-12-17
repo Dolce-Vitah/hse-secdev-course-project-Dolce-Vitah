@@ -1,4 +1,4 @@
-FROM python:3.11-alpine3.20 AS builder
+FROM ghcr.io/library/python:3.11-alpine3.20 AS builder
 
 RUN apk add --no-cache \
     gcc=13.2.1_git20240309-r1 \
@@ -14,7 +14,7 @@ RUN pip install --no-cache-dir --upgrade pip==23.3.1 \
 
 COPY src ./src
 
-FROM python:3.11-alpine3.20
+FROM ghcr.io/library/python:3.11-alpine3.20
 
 RUN addgroup -S app && adduser -S app -G app
 
