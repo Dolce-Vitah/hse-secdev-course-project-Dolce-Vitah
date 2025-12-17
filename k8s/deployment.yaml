@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: wishlist-api
+  namespace: wishlist
+  labels:
+    app: wishlist-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: wishlist-api
+  template:
+    metadata:
+      labels:
+        app: wishlist-api
+    spec:
+      serviceAccountName: wishlist-api
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: wishlist-api
+          image: app:local
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8000
+          env:
+            - name: PYTHONPATH
+              value: /app/src
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 15
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+          volumeMounts:
+            - name: uploads
+              mountPath: /app/uploads
+            - name: dbdata
+              mountPath: /app/db
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: uploads
+          emptyDir: {}
+        - name: dbdata
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}

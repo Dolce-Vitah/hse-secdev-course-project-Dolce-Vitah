@@ -1,0 +1,33 @@
+version: "3.9"
+
+services:
+  wishlist-api:
+    image: app:local
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      PYTHONPATH: "/app/src"
+    ports:
+      - "8000:8000"
+    read_only: true
+    tmpfs:
+      - /tmp
+    volumes:
+      - uploads:/app/uploads
+      - dbdata-api:/app/db
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+      - seccomp=./seccomp.json
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  uploads:
+  dbdata-api:

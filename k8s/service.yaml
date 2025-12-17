@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: wishlist-api
+  namespace: wishlist
+  labels:
+    app: wishlist-api
+spec:
+  type: ClusterIP
+  selector:
+    app: wishlist-api
+  ports:
+    - name: http
+      protocol: TCP
+      port: 8000
+      targetPort: 8000

@@ -1,4 +1,4 @@
-FROM python:3.11-alpine3.20 AS builder
+FROM public.ecr.aws/docker/library/python:3.11-alpine3.20 AS builder
 
 RUN apk add --no-cache \
     gcc=13.2.1_git20240309-r1 \
@@ -14,16 +14,16 @@ RUN pip install --no-cache-dir --upgrade pip==23.3.1 \
 
 COPY src ./src
 
-FROM python:3.11-alpine3.20
+FROM public.ecr.aws/docker/library/python:3.11-alpine3.20
 
 RUN addgroup -S app && adduser -S app -G app
 
 WORKDIR /app
 
 RUN apk add --no-cache \
-    libpq \
-    wget \
-    sqlite
+    libpq=16.11-r0 \
+    wget=1.24.5-r0 \
+    sqlite=3.45.3-r2
 
 RUN mkdir -p /app/uploads /app/db \
     && chown -R app:app /app/uploads /app/db
