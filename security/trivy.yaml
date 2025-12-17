@@ -1,0 +1,5 @@
+scan:
+  scanners: ["vuln"]
+vulnerability:
+  ignore-unfixed: true
+timeout: 5m

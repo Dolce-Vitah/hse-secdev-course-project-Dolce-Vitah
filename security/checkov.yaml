@@ -1,0 +1,3 @@
+compact: true
+skip-download: true
+soft-fail: true
